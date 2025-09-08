@@ -1,0 +1,1 @@
+export const ASISTENCIA_JURIDICA_CONTENT = ``;

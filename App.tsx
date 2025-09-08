@@ -1,0 +1,172 @@
+
+import React, { useState, useMemo, useEffect } from 'react';
+import { Category, Document, DocType } from './types';
+import { MOCK_DOCUMENTS } from './constants';
+import Header from './components/Header';
+import BottomNav from './components/BottomNav';
+import DocumentCard from './components/DocumentCard';
+import DocumentViewer from './components/DocumentViewer';
+import AdminView from './components/AdminView';
+import AbonoCalculator from './components/AbonoCalculator';
+import usePersistentState from './hooks/usePersistentState';
+import InfoCard from './components/InfoCard';
+
+const App: React.FC = () => {
+  const [documents, setDocuments] = usePersistentState<Document[]>('documents', MOCK_DOCUMENTS);
+  const [activeTab, setActiveTab] = useState<Category>(Category.CodesAndLaws);
+  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [zoomLevel, setZoomLevel] = useState(100);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [viewHistory, setViewHistory] = usePersistentState<string[]>('viewHistory', []);
+
+  const ADMIN_PASSWORD = 'admin2025';
+  const MAX_HISTORY_ITEMS = 18;
+
+  const handleLogin = (password: string): boolean => {
+    if (password === ADMIN_PASSWORD) {
+      setIsLoggedIn(true);
+      return true;
+    }
+    return false;
+  };
+
+  const handleAddDocument = (doc: Omit<Document, 'id'>) => {
+    const newDoc: Document = { ...doc, id: Date.now().toString() };
+    setDocuments(prevDocs => [...prevDocs, newDoc]);
+  };
+
+  const handleUpdateDocument = (updatedDoc: Document) => {
+    setDocuments(prevDocs => prevDocs.map(doc => doc.id === updatedDoc.id ? updatedDoc : doc));
+  };
+
+  const handleDeleteDocument = (id: string) => {
+    setDocuments(prevDocs => prevDocs.filter(doc => doc.id !== id));
+  };
+
+  const handleReorderDocument = (id: string, direction: 'up' | 'down') => {
+    const index = documents.findIndex(d => d.id === id);
+    if (index === -1) return;
+
+    if (direction === 'up' && index > 0) {
+        const newDocs = [...documents];
+        [newDocs[index - 1], newDocs[index]] = [newDocs[index], newDocs[index - 1]];
+        setDocuments(newDocs);
+    } else if (direction === 'down' && index < documents.length - 1) {
+        const newDocs = [...documents];
+        [newDocs[index + 1], newDocs[index]] = [newDocs[index], newDocs[index + 1]];
+        setDocuments(newDocs);
+    }
+  };
+
+  const filteredDocuments = useMemo(() => {
+    if (activeTab === Category.Admin) return [];
+
+    if (activeTab === Category.Recents) {
+        if (viewHistory.length === 0) return [];
+        const recentDocs = viewHistory.map(id => documents.find(doc => doc.id === id)).filter(Boolean) as Document[];
+        return recentDocs;
+    }
+
+    return documents.filter(doc => {
+      const inCategory = doc.category === activeTab;
+      if (!searchQuery) return inCategory;
+      const query = searchQuery.toLowerCase();
+      const inTitle = doc.title.toLowerCase().includes(query);
+      const inSubtitle = doc.subtitle?.toLowerCase().includes(query) ?? false;
+      const inContent = doc.type === DocType.MD ? doc.content.toLowerCase().includes(query) : false;
+      return inCategory && (inTitle || inSubtitle || inContent);
+    });
+  }, [documents, activeTab, searchQuery, viewHistory]);
+
+  const handleSelectDoc = (doc: Document) => {
+    if (doc.type === DocType.LINK) {
+      window.open(doc.content, '_blank', 'noopener,noreferrer');
+    } else {
+      setSelectedDoc(doc);
+      setViewHistory(prevHistory => {
+        const newHistory = [doc.id, ...prevHistory.filter(id => id !== doc.id)];
+        return newHistory.slice(0, MAX_HISTORY_ITEMS);
+      });
+    }
+  };
+
+  const handleBack = () => {
+    setSelectedDoc(null);
+  };
+  
+  useEffect(() => {
+    if (activeTab === Category.Recents || activeTab === Category.Admin) {
+      setSearchQuery('');
+    }
+  }, [activeTab]);
+
+  const renderGridContent = () => {
+    if (activeTab === Category.Admin) {
+      return (
+        <AdminView
+          isLoggedIn={isLoggedIn}
+          onLogin={handleLogin}
+          documents={documents}
+          onAddDocument={handleAddDocument}
+          onUpdateDocument={handleUpdateDocument}
+          onDeleteDocument={handleDeleteDocument}
+          onReorderDocument={handleReorderDocument}
+        />
+      );
+    }
+
+    if (filteredDocuments.length === 0) {
+        if (activeTab === Category.Recents) {
+            return <div className="text-center text-slate-500 py-16">No has visto ningún documento todavía.</div>;
+        }
+        return <div className="text-center text-slate-500 py-16">No se encontraron documentos.</div>
+    }
+
+    return (
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-4 p-4 lg:p-6">
+        {filteredDocuments.map(doc => (
+          <DocumentCard key={doc.id} doc={doc} onSelect={handleSelectDoc} />
+        ))}
+      </div>
+    );
+  };
+
+  const renderSelectedContent = () => {
+    if (!selectedDoc) return null;
+
+    switch (selectedDoc.type) {
+      case DocType.APP:
+        if (selectedDoc.content === 'abono-calculator') {
+          return <AbonoCalculator onBack={handleBack} />;
+        }
+        if (selectedDoc.content === 'asistencia-juridica') {
+            return <InfoCard onBack={handleBack} />;
+        }
+        return <DocumentViewer doc={selectedDoc} onBack={handleBack} searchQuery={searchQuery} zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />;
+      
+      case DocType.MD:
+      case DocType.PDF:
+      default:
+        return <DocumentViewer doc={selectedDoc} onBack={handleBack} searchQuery={searchQuery} zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 font-sans flex flex-col h-screen">
+      <Header searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+      {selectedDoc ? (
+        renderSelectedContent()
+      ) : (
+        <>
+          <main className="container mx-auto flex-grow overflow-y-auto pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
+            {renderGridContent()}
+          </main>
+          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        </>
+      )}
+    </div>
+  );
+};
+
+export default App;
