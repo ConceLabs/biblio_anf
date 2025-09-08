@@ -43,7 +43,7 @@ jobs:
           username: ${{ secrets.HOSTINGER_USER }}   # 
           password: ${{ secrets.HOSTINGER_PASS }}
           port: ${{ secrets.HOSTINGER_PORT }}       # 21
-          protocol: ftps
+          protocol: ftp
           local-dir: dist/                          # <- debe terminar en /
           server-dir: public_html/biblio_anf/       # <- ruta completa relativa a tu raíz FTP
           log-level: verbose
