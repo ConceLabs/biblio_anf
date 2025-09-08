@@ -41,8 +41,8 @@ jobs:
       - name: Deploy to Hostinger (FTPS)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ secrets.HOSTINGER_HOST }}    # ej: 212.85.29.163 (SIN ftp://)
-          username: ${{ secrets.HOSTINGER_USER }}  # ej: u818497492
+          server: ${{ secrets.HOSTINGER_HOST }}    
+          username: ${{ secrets.HOSTINGER_USER }} 
           password: ${{ secrets.HOSTINGER_PASS }}
           port: ${{ secrets.HOSTINGER_PORT }}      # 21
           protocol: ftps
