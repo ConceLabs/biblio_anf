@@ -30,6 +30,6 @@ jobs:
           username: ${{ secrets.HOSTINGER_USER }}
           password: ${{ secrets.HOSTINGER_PASS }}
           port: ${{ secrets.HOSTINGER_PORT }}
-          protocol: ftps
+          protocol: ftp
           local-dir: ./dist/
           server-dir: /public_html/biblio_anf/
