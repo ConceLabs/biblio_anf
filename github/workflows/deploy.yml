@@ -1,0 +1,58 @@
+name: Build & Deploy Vite to Hostinger
+
+on:
+  push:
+    branches: [ "main" ]   # despliega cuando haces push a main
+  workflow_dispatch:        # permite ejecutarlo manualmente desde la pestaña "Actions"
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install deps (CI)
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      # ======= Opción A: SFTP (recomendada) =======
+      - name: Deploy via SFTP
+        if: ${{ env.DEPLOY_PROTOCOL == 'sftp' }}
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: ${{ secrets.SFTP_SERVER }}          # ej: sftp.tudominio.com o IP
+          port: ${{ secrets.SFTP_PORT }}              # ej: 22
+          username: ${{ secrets.SFTP_USERNAME }}
+          password: ${{ secrets.SFTP_PASSWORD }}
+          local_path: "dist/*"
+          remote_path: "public_html/biblio_anf/"      # ajusta si despliegas al root
+          sftp_only: true
+          # Si quieres limpieza total antes de subir (cuidado): # delete as you need
+          # args: "-o StrictHostKeyChecking=no"
+
+      # ======= Opción B: FTPS (alternativa) =======
+      - name: Deploy via FTPS
+        if: ${{ env.DEPLOY_PROTOCOL == 'ftps' }}
+        uses: SamKirkland/FTP-Deploy-Action@v4
+        with:
+          server: ${{ secrets.FTP_SERVER }}           # ej: ftp.tudominio.com
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ftps
+          local-dir: dist
+          server-dir: public_html/biblio_anf/         # ajusta si despliegas al root
+          # danger-clean-slate: true                  # <- borra todo ANTES de subir (úsalo sólo si lo quieres)
+
+    env:
+      # Elige protocolo cambiando este valor a 'sftp' o 'ftps'
+      DEPLOY_PROTOCOL: 'sftp'
