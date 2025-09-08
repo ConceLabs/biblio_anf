@@ -2,8 +2,8 @@ name: Deploy to Hostinger
 
 on:
   push:
-    branches: [ "main" ]     # Despliega en cada push a main
-  workflow_dispatch:          # Permite ejecutarlo manualmente desde Actions
+    branches: [ "main" ]
+  workflow_dispatch:
 
 concurrency:
   group: hostinger-deploy
@@ -23,13 +23,12 @@ jobs:
           node-version: 20
           cache: 'npm'
 
-      - name: Install dependencies (CI)
+      - name: Install dependencies
         run: npm ci
 
       - name: Build project
         run: npm run build
 
-      # 👇 Útil para verificar que el build generó archivos
       - name: Show build output
         run: |
           echo "---- dist content ----"
@@ -37,18 +36,15 @@ jobs:
           echo "---- size ----"
           du -sh dist || true
 
-      # ===== Deploy via FTPS a Hostinger =====
       - name: Deploy to Hostinger (FTPS)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: ${{ secrets.HOSTINGER_HOST }}    
-          username: ${{ secrets.HOSTINGER_USER }} 
+          server: ${{ secrets.HOSTINGER_HOST }}
+          username: ${{ secrets.HOSTINGER_USER }}
           password: ${{ secrets.HOSTINGER_PASS }}
-          port: ${{ secrets.HOSTINGER_PORT }}      # 21
+          port: ${{ secrets.HOSTINGER_PORT }}
           protocol: ftps
-          local-dir: dist
-          # Importante: muchos usuarios FTP ya abren dentro de public_html
-          # Por eso NO anteponemos /public_html aquí:
-          server-dir: biblio_anf/
+          local-dir: dist/          # 👈 aquí el fix
+          server-dir: biblio_anf/   # 👈 relativo a tu raíz FTP
           log-level: verbose
           timeout: 120000
