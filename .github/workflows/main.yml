@@ -29,22 +29,26 @@ jobs:
       - name: Build project
         run: npm run build
 
+      # Crear un marcador visible para buscarlo en el servidor
+      - name: Add deploy marker
+        run: echo "deployed $(date)" > dist/DEPLOY_CHECK.txt
+
       - name: Show build output
         run: |
           echo "---- dist content ----"
           ls -la dist
-          echo "---- size ----"
           du -sh dist || true
 
-      - name: Deploy to Hostinger (FTPS)
+      - name: Deploy to Hostinger (FTP)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
           server: ${{ secrets.HOSTINGER_HOST }}     # 
           username: ${{ secrets.HOSTINGER_USER }}   # 
           password: ${{ secrets.HOSTINGER_PASS }}
           port: ${{ secrets.HOSTINGER_PORT }}       # 21
-          protocol: ftp
-          local-dir: dist/                          # <- debe terminar en /
-          server-dir: public_html/biblio_anf/       # <- ruta completa relativa a tu raíz FTP
+          protocol: ftp                             # (FTPS te dio 425)
+          local-dir: dist/
+          # 👇 prueba esta ruta completa (muy típica en Hostinger)
+          server-dir: domains/concelabs.store/public_html/biblio_anf/
           log-level: verbose
           timeout: 120000
